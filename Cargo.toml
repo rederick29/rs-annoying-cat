@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 bevy = { version = "0.13", features = ["wayland"] }
 enigo = "0.1"
+rand = "0.8.5"

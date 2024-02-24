@@ -2,6 +2,8 @@ use bevy::{prelude::*, window::{Cursor, PrimaryWindow, WindowResolution}};
 use bevy::window::WindowLevel;
 use enigo::MouseControllable;
 
+mod events;
+
 #[derive(Component)]
 struct Cat {
     pub hungry: bool,
