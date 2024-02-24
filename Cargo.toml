@@ -1,0 +1,7 @@
+[package]
+name = "rs-annoying-cat"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy = { version = "0.12", features = ["wayland"] }
