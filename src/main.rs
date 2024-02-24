@@ -2,6 +2,8 @@ use bevy::{prelude::*, window::{Cursor, PrimaryWindow, WindowResolution}};
 use bevy::window::WindowLevel;
 use enigo::MouseControllable;
 
+use events::keyboard::keyboard_type;
+
 mod events;
 
 #[derive(Component)]
@@ -46,6 +48,7 @@ fn main() {
         }))
         .add_systems(Startup, setup)
         .add_systems(Update, move_window)
+        .add_systems(FixedUpdate, keyboard_type).insert_resource(Time::<Fixed>::from_seconds(2.0))
     .run();
 }
 
