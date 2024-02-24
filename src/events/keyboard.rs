@@ -8,7 +8,7 @@ pub fn keyboard_type(mut windows: Query<&mut Window>) {
     let random_character_count: u8 = rng.gen();
 
     let random_characters: String = rng.sample_iter(&Alphanumeric)
-        .take(random_character_count)
+        .take(random_character_count.into())
         .map(char::from)
         .collect();
 
