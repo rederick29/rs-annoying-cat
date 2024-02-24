@@ -1,8 +1,5 @@
-use core::time;
-use std::thread;
-
-use bevy::{asset::AssetServer, audio::AudioBundle, ecs::system::{Commands, Query, Res}, prelude::default, window::Window};
-use enigo::{Key, KeyboardControllable};
+use bevy::{asset::AssetServer, audio::AudioBundle, ecs::system::{Commands, Res}, prelude::default};
+use enigo::KeyboardControllable;
 use rand::{distributions::Alphanumeric, Rng};
 
 pub fn keyboard_type(mut commands: Commands, asset_server: Res<AssetServer>) {

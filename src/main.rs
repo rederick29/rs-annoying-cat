@@ -3,6 +3,7 @@ use bevy::window::WindowLevel;
 use enigo::MouseControllable;
 
 use events::keyboard::keyboard_type;
+use events::quit::quit_program;
 
 mod events;
 
@@ -48,6 +49,7 @@ fn main() {
         }))
         .add_systems(Startup, setup)
         .add_systems(Update, move_window)
+        .add_systems(Update, quit_program)
         // .add_systems(FixedUpdate, keyboard_type).insert_resource(Time::<Fixed>::from_seconds(2.0))
     .run();
 }
