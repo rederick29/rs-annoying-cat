@@ -1,5 +1,6 @@
 use bevy::{prelude::*, window::{Cursor, WindowResolution}};
 use bevy::window::WindowLevel;
+use enigo::MouseControllable;
 
 fn main() {
     let window = Window {
@@ -39,10 +40,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     });
 }
 
-fn move_window(time: Res<Time>, mut windows: Query<&mut Window>) {
-    let time = time.elapsed_seconds();
-    windows.get_single_mut().unwrap().position = WindowPosition::At(IVec2::new(
-        (time.sin() / 2.0 + 0.5) as i32 * 1000,
-        (time.cos() / 2.0 + 0.5) as i32 * 1000,
-    ));
+fn move_window(mut windows: Query<&mut Window>) {
+    let e_mouse = enigo::Enigo::new();
+    let (x, y) = e_mouse.mouse_location();
+    windows.get_single_mut().unwrap().position = WindowPosition::At(IVec2::new(x + 10, y));
 }
