@@ -130,7 +130,7 @@ fn move_cat_away_from_x(mut dont_reset: Local<bool>, mut mouse_c: Local<(i32, i3
     move_cat(&mut dont_reset, (startx, starty), (endx, endy), (i, j), window, &mut move_mouse.0);
 }
 
-fn move_cat(dont_reset: &mut bool, start_pos: (&mut i32, &mut i32), end_pos: (&mut i32, &mut i32), loop_idx: (&mut i32, &mut i32), window: &mut Window, move_condition: &mut bool) {
+fn move_cat(dont_reset: &mut bool, start_pos: (&mut i32, &mut i32), end_pos: (&mut i32, &mut i32), loop_idx: (&mut i32, &mut i32), window: &mut Window, move_condition: &mut bool) {    
     let mut e_mouse = enigo::Enigo::new();
     let (i, j) = loop_idx;
     let (end_x , end_y) = end_pos;
@@ -194,7 +194,11 @@ fn should_cat_move_random(move_cat: Res<ShouldCatMoveRandomly>) -> bool {
     **move_cat
 }
 
-fn toggle_cat_random_move(mut move_cat: ResMut<ShouldCatMoveRandomly>) {
+fn toggle_cat_random_move(mut commands: Commands, mut move_cat: ResMut<ShouldCatMoveRandomly>, asset_server: Res<AssetServer>) {
+    commands.spawn(AudioBundle {
+        source: asset_server.load("./audio/meow_4.ogg"),
+        ..default()
+    });
     **move_cat = true;
 }
 
