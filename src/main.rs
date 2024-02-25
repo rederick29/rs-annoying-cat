@@ -169,7 +169,7 @@ fn mouse_on_x(main_window: Query<&Window, Without<PrimaryWindow>>, mut move_mous
         _ => { return; }
     };
 
-    if mouse_x >= close_x - 20 && mouse_x <= close_x && mouse_y <= close_y && mouse_y >= close_y - 20 {
+    if mouse_x >= close_x - 35 && mouse_x <= close_x + 10 && mouse_y <= close_y + 30 && mouse_y >= close_y {
         **move_mouse = true;
     }
 }
