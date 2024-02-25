@@ -1,4 +1,4 @@
-use bevy::{prelude::*, render::{camera::RenderTarget, view::window}, window::{Cursor, PrimaryWindow, WindowRef, WindowResolution}, winit::WinitWindows};
+use bevy::{ecs::entity, prelude::*, render::{camera::RenderTarget, view::window}, utils::tracing::Instrument, window::{Cursor, PrimaryWindow, WindowRef, WindowResolution}, winit::WinitWindows};
 use bevy::window::WindowLevel;
 use enigo::MouseControllable;
 use rand::Rng;
@@ -31,6 +31,10 @@ impl Cat {
 #[repr(transparent)]
 struct ShouldMoveMouseAway(pub bool);
 
+#[derive(Resource, Deref, DerefMut)]
+#[repr(transparent)]
+struct ShouldCatMoveRandomly(pub bool);
+
 fn main() {
     let cat_window = Window {
         // Enable transparent support for the window
@@ -39,6 +43,7 @@ fn main() {
         window_level: WindowLevel::AlwaysOnTop,
         resizable: false,
         resolution: WindowResolution::new(300.0, 300.0),
+        position: WindowPosition::Centered(MonitorSelection::Current),
         cursor: Cursor {
             // Allow inputs to pass through to apps behind this app.
             hit_test: false,
@@ -59,8 +64,11 @@ fn main() {
         .add_systems(FixedUpdate, keyboard_type.run_if(run_every_10s))
         .add_systems(FixedFirst, mouse_on_x)
         .add_systems(FixedUpdate, move_cat.run_if(should_move_mouse))
+        .add_systems(FixedUpdate, toggle_cat_random_move.run_if(move_cat_every_20s))
+        .add_systems(FixedUpdate, move_cat_random.run_if(should_cat_move_random))
         .insert_resource(Time::<Fixed>::from_seconds(FIXED_UPDATE))
         .insert_resource(ShouldMoveMouseAway(false))
+        .insert_resource(ShouldCatMoveRandomly(false))
     .run();
 }
 
@@ -88,6 +96,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let second_window = commands.spawn(Window {
         decorations: true,
         resizable: false,
+        position: WindowPosition::Centered(MonitorSelection::Current),
         resolution: WindowResolution::new(800.0, 600.0),
         ..Default::default()
     }).id();
@@ -181,9 +190,57 @@ fn should_move_mouse(move_mouse: Res<ShouldMoveMouseAway>) -> bool {
     **move_mouse
 }
 
-fn get_random_coordinates(winit_windows: NonSend<WinitWindows>, mut window: Query<(Entity, &mut Window), With<PrimaryWindow>>) {
-    let (entity, window) = window.get_single_mut().unwrap();
+fn should_cat_move_random(move_cat: Res<ShouldCatMoveRandomly>) -> bool {
+    **move_cat
+}
+
+fn toggle_cat_random_move(mut move_cat: ResMut<ShouldCatMoveRandomly>) {
+    **move_cat = true;
+}
+
+fn move_cat_every_20s(time: Res<Time>, move_mouse: Res<ShouldMoveMouseAway>) -> bool {
+    time.elapsed_seconds() % 20.0 == 0.0 && !**move_mouse
+}
+
+fn get_random_coordinates(winit_windows: NonSend<WinitWindows>, entity: Entity, mut window: &mut Window) -> (i32, i32) {
     let monitor_size = winit_windows.get_window(entity).unwrap().current_monitor().unwrap().size();
     let random_x = rand::thread_rng().gen_range(0..monitor_size.width);
     let random_y = rand::thread_rng().gen_range(0..monitor_size.height);
+    (random_x as i32, random_y as i32)
+}
+
+fn move_cat_random(mut moving: Local<bool>, mut start_pos: Local<(i32, i32)>, mut end_pos: Local<(i32, i32)>, mut loop_idx: Local<(i32, i32)>, winit_windows: NonSend<WinitWindows>, mut window: Query<(Entity, &mut Window), With<PrimaryWindow>>, mut random_move: ResMut<ShouldCatMoveRandomly>) {
+    if !**random_move { return };
+    let (startx, starty) = &mut *start_pos;
+    let (endx, endy) = &mut *end_pos;
+    let (i, j) = &mut *loop_idx;
+    let (entity, mut window) = window.get_single_mut().unwrap();
+
+    if !*moving {
+        (*startx, *starty) = match window.position {
+            WindowPosition::At(v) => {
+                (v.x, v.y)
+            },
+            _ => { return; }
+        };
+        (*endx, *endy) = get_random_coordinates(winit_windows, entity, &mut window);
+        *i = 0;
+        *j = 0;
+        *moving = true;
+    }
+
+    if *i < 100 && *j < 100 {
+        let dx = (*endx - *startx) / 100;
+        let dy = (*endy - *starty) / 100;
+
+        let new_pos_x = *startx + *i * dx;
+        let new_pos_y = *starty + *j * dy;
+
+        window.position = WindowPosition::At(IVec2::new(new_pos_x + 10, new_pos_y));
+        *i += 1;
+        *j += 1;
+    } else {
+        *moving = false;
+        **random_move = false;
+    }
 }
