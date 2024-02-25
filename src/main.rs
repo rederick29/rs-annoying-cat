@@ -110,6 +110,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn move_cat(mut dont_reset: Local<bool>, mut mouse_c: Local<(i32, i32)>, mut cat_c: Local<(i32, i32)>, mut loop_idx: Local<(i32, i32)>, mut window: Query<&mut Window, With<PrimaryWindow>>, mut move_mouse: ResMut<ShouldMoveMouseAway>, main_window: Query<&Window, Without<PrimaryWindow>>) {
+    info!("Move cat event taking place...");
+
     let mut window = window.get_single_mut().unwrap();
     let mut e_mouse = enigo::Enigo::new();
     let (i, j) = &mut *loop_idx;
