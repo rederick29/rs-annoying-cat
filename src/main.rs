@@ -66,7 +66,7 @@ fn main() {
 }
 
 fn run_every_10s(time: Res<Time>) -> bool {
-    time.elapsed_seconds() % 10.0 == 0.0
+    time.elapsed_seconds() % 4.0 == 0.0
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
