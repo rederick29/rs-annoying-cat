@@ -210,6 +210,8 @@ fn get_random_coordinates(winit_windows: NonSend<WinitWindows>, entity: Entity, 
 }
 
 fn move_cat_random(mut moving: Local<bool>, mut start_pos: Local<(i32, i32)>, mut end_pos: Local<(i32, i32)>, mut loop_idx: Local<(i32, i32)>, winit_windows: NonSend<WinitWindows>, mut window: Query<(Entity, &mut Window), With<PrimaryWindow>>, mut random_move: ResMut<ShouldCatMoveRandomly>) {
+    info!("Random move cat event taking place...");
+
     if !**random_move { return };
     let (startx, starty) = &mut *start_pos;
     let (endx, endy) = &mut *end_pos;
