@@ -10,6 +10,9 @@ mod events;
 
 const FIXED_UPDATE: f64 = 1.0/60.0;
 
+#[derive(Component)]
+struct Cat;
+
 #[derive(Resource, Deref, DerefMut)]
 #[repr(transparent)]
 struct IsCatHungry(pub bool);
@@ -76,6 +79,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         ..Default::default()
     });
     commands.spawn((
+        Cat,
         SpriteBundle {
             texture: asset_server.load("./cat_sprites/neutral.png"),
             transform: Transform::from_xyz(CAT_X, CAT_Y, CAT_Z).with_scale(Vec3::new(0.6, 0.6, 1.0)),
@@ -163,7 +167,7 @@ fn move_cat(dont_reset: &mut bool, start_pos: (&mut i32, &mut i32), end_pos: (&m
     }
 }
 
-fn mouse_on_x(main_window: Query<&Window, Without<PrimaryWindow>>, mut move_mouse: ResMut<ShouldMoveMouseAway>) {
+fn mouse_on_x(main_window: Query<&Window, Without<PrimaryWindow>>, mut move_mouse: ResMut<ShouldMoveMouseAway>, mut material: Query<&mut Handle<Image>, With<Cat>>, asset_server: Res<AssetServer>) {
     let main_window = main_window.get_single().unwrap();
     let main_window_pos = main_window.position;
 
@@ -176,6 +180,8 @@ fn mouse_on_x(main_window: Query<&Window, Without<PrimaryWindow>>, mut move_mous
     };
 
     if mouse_x >= close_x - 35 && mouse_x <= close_x + 10 && mouse_y <= close_y + 30 && mouse_y >= close_y {
+        let mut cat_sprite = material.get_single_mut().unwrap();
+        *cat_sprite = asset_server.load("./cat_sprites/angry.png");
         **move_mouse = true;
     }
 }
@@ -210,7 +216,7 @@ fn get_random_coordinates(winit_windows: NonSend<WinitWindows>, entity: Entity, 
     (random_x as i32, random_y as i32)
 }
 
-fn move_cat_random(mut moving: Local<bool>, mut start_pos: Local<(i32, i32)>, mut end_pos: Local<(i32, i32)>, mut loop_idx: Local<(i32, i32)>, winit_windows: NonSend<WinitWindows>, mut window: Query<(Entity, &mut Window), With<PrimaryWindow>>, mut random_move: ResMut<ShouldCatMoveRandomly>) {
+fn move_cat_random((mut moving, mut random_move): (Local<bool>, ResMut<ShouldCatMoveRandomly>), mut start_pos: Local<(i32, i32)>, mut end_pos: Local<(i32, i32)>, mut loop_idx: Local<(i32, i32)>, winit_windows: NonSend<WinitWindows>, mut window: Query<(Entity, &mut Window), With<PrimaryWindow>>, (mut material, asset_server, mut sprite): (Query<&mut Handle<Image>, With<Cat>>, Res<AssetServer>, Query<&mut Sprite, With<Cat>>)) {
     if !**random_move { return };
     let (startx, starty) = &mut *start_pos;
     let (endx, endy) = &mut *end_pos;
@@ -225,6 +231,10 @@ fn move_cat_random(mut moving: Local<bool>, mut start_pos: Local<(i32, i32)>, mu
             _ => { return; }
         };
         (*endx, *endy) = get_random_coordinates(winit_windows, entity, &mut window);
+        let mut cat_sprite = material.get_single_mut().unwrap();
+        let mut sprite = sprite.get_single_mut().unwrap();
+        *cat_sprite = asset_server.load("./cat_sprites/walking.png");
+        sprite.flip_x = (*endx - *startx) < 0;
         *i = 0;
         *j = 0;
         *moving = true;
@@ -243,6 +253,9 @@ fn move_cat_random(mut moving: Local<bool>, mut start_pos: Local<(i32, i32)>, mu
     } else {
         *moving = false;
         **random_move = false;
+
+        let mut cat_sprite = material.get_single_mut().unwrap();
+        *cat_sprite = asset_server.load("./cat_sprites/neutral.png");
     }
 }
 
