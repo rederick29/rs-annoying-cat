@@ -1,4 +1,4 @@
-use bevy::{ecs::entity, prelude::*, render::{camera::RenderTarget, view::window}, utils::tracing::Instrument, window::{Cursor, PrimaryWindow, WindowRef, WindowResolution}, winit::WinitWindows};
+use bevy::{prelude::*, render::camera::RenderTarget, window::{Cursor, PrimaryWindow, WindowRef, WindowResolution}, winit::WinitWindows};
 use bevy::window::WindowLevel;
 use enigo::MouseControllable;
 use rand::Rng;
@@ -10,22 +10,9 @@ mod events;
 
 const FIXED_UPDATE: f64 = 1.0/60.0;
 
-#[derive(Component)]
-struct Cat {
-    pub hungry: bool,
-    pub thirsty: bool,
-    pub angry: bool,
-}
-
-impl Cat {
-    pub fn new(hungry: bool, thirsty: bool, angry: bool) -> Self {
-        Self {
-            hungry,
-            thirsty,
-            angry,
-        }
-    }
-}
+#[derive(Resource, Deref, DerefMut)]
+#[repr(transparent)]
+struct IsCatHungry(pub bool);
 
 #[derive(Resource, Deref, DerefMut)]
 #[repr(transparent)]
@@ -42,7 +29,7 @@ fn main() {
         decorations: false,
         window_level: WindowLevel::AlwaysOnTop,
         resizable: false,
-        resolution: WindowResolution::new(300.0, 300.0),
+        resolution: WindowResolution::new(100.0, 100.0).with_scale_factor_override(1.0),
         position: WindowPosition::Centered(MonitorSelection::Current),
         cursor: Cursor {
             // Allow inputs to pass through to apps behind this app.
@@ -63,12 +50,15 @@ fn main() {
         .add_systems(Update, quit_program)
         .add_systems(FixedUpdate, keyboard_type.run_if(run_every_10s))
         .add_systems(FixedFirst, mouse_on_x)
-        .add_systems(FixedUpdate, move_cat.run_if(should_move_mouse))
+        // .add_systems(FixedFirst, is_cat_hungry)
+        .add_systems(FixedUpdate, move_cat_away_from_x.run_if(should_move_mouse))
         .add_systems(FixedUpdate, toggle_cat_random_move.run_if(move_cat_every_20s))
+        // .add_systems(FixedUpdate, cat_hungry)
         .add_systems(FixedUpdate, move_cat_random.run_if(should_cat_move_random))
         .insert_resource(Time::<Fixed>::from_seconds(FIXED_UPDATE))
         .insert_resource(ShouldMoveMouseAway(false))
         .insert_resource(ShouldCatMoveRandomly(false))
+        // .insert_resource(IsCatHungry(false))
     .run();
 }
 
@@ -88,7 +78,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         SpriteBundle {
             texture: asset_server.load("./cat_sprites/neutral.png"),
-            transform: Transform::from_xyz(CAT_X, CAT_Y, CAT_Z),
+            transform: Transform::from_xyz(CAT_X, CAT_Y, CAT_Z).with_scale(Vec3::new(0.6, 0.6, 1.0)),
             ..default()
         },
     ));
@@ -97,7 +87,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         decorations: true,
         resizable: false,
         position: WindowPosition::Centered(MonitorSelection::Current),
-        resolution: WindowResolution::new(800.0, 600.0),
+        resolution: WindowResolution::new(400.0, 300.0),
         ..Default::default()
     }).id();
 
@@ -119,44 +109,50 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         });
 }
 
-fn move_cat(mut dont_reset: Local<bool>, mut mouse_c: Local<(i32, i32)>, mut cat_c: Local<(i32, i32)>, mut loop_idx: Local<(i32, i32)>, mut window: Query<&mut Window, With<PrimaryWindow>>, mut move_mouse: ResMut<ShouldMoveMouseAway>, main_window: Query<&Window, Without<PrimaryWindow>>) {
-    info!("Move cat event taking place...");
-
-    let mut window = window.get_single_mut().unwrap();
-    let mut e_mouse = enigo::Enigo::new();
+fn move_cat_away_from_x(mut dont_reset: Local<bool>, mut mouse_c: Local<(i32, i32)>, mut cat_c: Local<(i32, i32)>, mut loop_idx: Local<(i32, i32)>, mut window: Query<&mut Window, With<PrimaryWindow>>, mut move_mouse: ResMut<ShouldMoveMouseAway>, main_window: Query<&Window, Without<PrimaryWindow>>) {
+    let (startx, starty) = &mut *mouse_c;
+    let (endx, endy) = &mut *cat_c;
     let (i, j) = &mut *loop_idx;
-    let (cat_x , cat_y) = &mut *cat_c;
-    let (mouse_x, mouse_y) = &mut *mouse_c;
     let main_window = main_window.get_single().unwrap();
-    (*mouse_x, *mouse_y) = match main_window.position {
+    let window = &mut *window.get_single_mut().unwrap();
+    (*startx, *starty) = match main_window.position {
         WindowPosition::At(v) => {
             (v.x + main_window.physical_width() as i32, v.y)
         },
         _ => { return; }
     };
 
+
+    move_cat(&mut dont_reset, (startx, starty), (endx, endy), (i, j), window, &mut move_mouse.0);
+}
+
+fn move_cat(dont_reset: &mut bool, start_pos: (&mut i32, &mut i32), end_pos: (&mut i32, &mut i32), loop_idx: (&mut i32, &mut i32), window: &mut Window, move_condition: &mut bool) {
+    let mut e_mouse = enigo::Enigo::new();
+    let (i, j) = loop_idx;
+    let (end_x , end_y) = end_pos;
+    let (start_x, start_y) = start_pos;
     if !*dont_reset {
         *i = 0;
         *j = 0;
-        (*cat_x, *cat_y) = match window.position {
+        (*end_x, *end_y) = match window.position {
             WindowPosition::At(v) => {
                 (v.x, v.y)
             },
             _ => { return; }
         };
-        **move_mouse = false;
+        *move_condition = false;
         *dont_reset = true;
         return;
     }
 
     if *i < 100 && *j < 100 {
-        window.position = WindowPosition::At(IVec2::new(*mouse_x + 10, *mouse_y));
+        window.position = WindowPosition::At(IVec2::new(*start_x + 10, *start_y));
 
-        let dx = (*cat_x - *mouse_x) / 100;
-        let dy = (*cat_y - *mouse_y) / 100;
+        let dx = (*end_x - *start_x) / 100;
+        let dy = (*end_y - *start_y) / 100;
 
-        let new_pos_x = *mouse_x + *i * dx;
-        let new_pos_y = *mouse_y + *j * dy;
+        let new_pos_x = *start_x + *i * dx;
+        let new_pos_y = *start_y + *j * dy;
 
         e_mouse.mouse_move_to(new_pos_x, new_pos_y);
         window.position = WindowPosition::At(IVec2::new(new_pos_x + 10, new_pos_y));
@@ -165,8 +161,6 @@ fn move_cat(mut dont_reset: Local<bool>, mut mouse_c: Local<(i32, i32)>, mut cat
     } else {
         *dont_reset = false;
     }
-
-    println!("i: {i}, wpos: {:?}", window.position);
 }
 
 fn mouse_on_x(main_window: Query<&Window, Without<PrimaryWindow>>, mut move_mouse: ResMut<ShouldMoveMouseAway>) {
@@ -202,16 +196,21 @@ fn move_cat_every_20s(time: Res<Time>, move_mouse: Res<ShouldMoveMouseAway>) -> 
     time.elapsed_seconds() % 20.0 == 0.0 && !**move_mouse
 }
 
-fn get_random_coordinates(winit_windows: NonSend<WinitWindows>, entity: Entity, mut window: &mut Window) -> (i32, i32) {
+fn is_cat_hungry(time: Res<Time>, move_mouse: Res<ShouldMoveMouseAway>, mut is_cat_hungry: ResMut<IsCatHungry>) {
+    if time.elapsed_seconds() % 30.0 == 0.0 && !**move_mouse {
+        **is_cat_hungry = true;
+    }
+}
+
+
+fn get_random_coordinates(winit_windows: NonSend<WinitWindows>, entity: Entity, window: &mut Window) -> (i32, i32) {
     let monitor_size = winit_windows.get_window(entity).unwrap().current_monitor().unwrap().size();
-    let random_x = rand::thread_rng().gen_range(0..monitor_size.width);
-    let random_y = rand::thread_rng().gen_range(0..monitor_size.height);
+    let random_x = rand::thread_rng().gen_range(0..monitor_size.width - window.physical_width() / 2);
+    let random_y = rand::thread_rng().gen_range(0..monitor_size.height - window.physical_height() / 2);
     (random_x as i32, random_y as i32)
 }
 
 fn move_cat_random(mut moving: Local<bool>, mut start_pos: Local<(i32, i32)>, mut end_pos: Local<(i32, i32)>, mut loop_idx: Local<(i32, i32)>, winit_windows: NonSend<WinitWindows>, mut window: Query<(Entity, &mut Window), With<PrimaryWindow>>, mut random_move: ResMut<ShouldCatMoveRandomly>) {
-    info!("Random move cat event taking place...");
-
     if !**random_move { return };
     let (startx, starty) = &mut *start_pos;
     let (endx, endy) = &mut *end_pos;
@@ -245,4 +244,33 @@ fn move_cat_random(mut moving: Local<bool>, mut start_pos: Local<(i32, i32)>, mu
         *moving = false;
         **random_move = false;
     }
+}
+
+fn cat_hungry(mut main_window: Query<&mut Window, Without<PrimaryWindow>>, mut cat_window: Query<&mut Window, With<PrimaryWindow>>, mut dont_reset: Local<bool>, mut start_pos: Local<(i32, i32)>, mut end_pos: Local<(i32, i32)>, mut loop_idx: Local<(i32, i32)>, mut move_condition: ResMut<IsCatHungry>) {
+    if !**move_condition { return; }
+    let (startx, starty) = &mut *start_pos;
+    let (endx, endy) = &mut *end_pos;
+    let (i, j) = &mut *loop_idx;
+    let mut cat_window = cat_window.get_single_mut().unwrap();
+    let mut main_window = main_window.get_single_mut().unwrap();
+
+    if !*dont_reset {
+        (*startx, *starty) = match cat_window.position {
+            WindowPosition::At(v) => {
+                (v.x, v.y)
+            },
+            _ => { return; }
+        };
+        (*endx, *endy) = match main_window.position {
+            WindowPosition::At(v) => {
+                (v.x + main_window.physical_width() as i32 / 2, v.y + main_window.physical_height() as i32 / 2)
+            },
+            _ => { return; }
+        };
+    }
+
+    main_window.set_minimized(false);
+
+    move_cat(&mut dont_reset, (startx, starty), (endx, endy), (i, j), &mut cat_window, &mut move_condition);
+
 }

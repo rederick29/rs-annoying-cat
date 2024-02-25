@@ -8,8 +8,6 @@ pub fn keyboard_type(mut commands: Commands, asset_server: Res<AssetServer>) {
     let mut rng = rand::thread_rng();
 
     if rng.gen_bool(1.0 / 3.0) {
-        info!("Keyboard type event taking place...");
-
         let random_character_count: u8 = rng.gen_range(16..56);
 
         let random_characters: String = rng.sample_iter(&Alphanumeric)
