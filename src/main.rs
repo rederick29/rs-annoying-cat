@@ -38,7 +38,7 @@ fn main() {
         decorations: false,
         window_level: WindowLevel::AlwaysOnTop,
         resizable: false,
-        resolution: WindowResolution::new(100.0, 100.0),
+        resolution: WindowResolution::new(300.0, 300.0),
         cursor: Cursor {
             // Allow inputs to pass through to apps behind this app.
             hit_test: false,
@@ -79,7 +79,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     });
     commands.spawn((
         SpriteBundle {
-            texture: asset_server.load("cat.png"),
+            texture: asset_server.load("./cat_sprites/neutral.png"),
             transform: Transform::from_xyz(CAT_X, CAT_Y, CAT_Z),
             ..default()
         },
