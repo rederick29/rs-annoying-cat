@@ -1,6 +1,7 @@
-use bevy::{prelude::*, render::{camera::RenderTarget, view::window}, window::{Cursor, PrimaryWindow, WindowRef, WindowResolution}};
+use bevy::{prelude::*, render::{camera::RenderTarget, view::window}, window::{Cursor, PrimaryWindow, WindowRef, WindowResolution}, winit::WinitWindows};
 use bevy::window::WindowLevel;
 use enigo::MouseControllable;
+use rand::Rng;
 
 use events::quit::quit_program;
 use events::keyboard::keyboard_type;
@@ -178,4 +179,11 @@ fn mouse_on_x(main_window: Query<&Window, Without<PrimaryWindow>>, mut move_mous
 
 fn should_move_mouse(move_mouse: Res<ShouldMoveMouseAway>) -> bool {
     **move_mouse
+}
+
+fn get_random_coordinates(winit_windows: NonSend<WinitWindows>, mut window: Query<(Entity, &mut Window), With<PrimaryWindow>>) {
+    let (entity, window) = window.get_single_mut().unwrap();
+    let monitor_size = winit_windows.get_window(entity).unwrap().current_monitor().unwrap().size();
+    let random_x = rand::thread_rng().gen_range(0..monitor_size.width);
+    let random_y = rand::thread_rng().gen_range(0..monitor_size.height);
 }
